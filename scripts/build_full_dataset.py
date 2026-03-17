@@ -242,6 +242,6 @@ def build_split(split):
 
 
 if __name__ == "__main__":
-    # Build the test split first to verify the preprocessing pipeline
-    # Will do the same for val and train in the next commits
-    build_split("test")
+    # Build the test and val to verify the preprocessing pipeline
+    # Will do the same for train in the next commit
+    build_split("val")
