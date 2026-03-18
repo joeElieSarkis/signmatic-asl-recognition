@@ -26,7 +26,7 @@ FEATURE_DIM = 201
 
 def clean_sentence(text):
     """
-    Clean the text labels before training.
+    Clean the text labels before training.AQ    !
 
     What this function does:
     1. Converts the input to string just in case.
@@ -242,6 +242,5 @@ def build_split(split):
 
 
 if __name__ == "__main__":
-    # Build the test and val to verify the preprocessing pipeline
-    # Will do the same for train in the next commit
-    build_split("val")
+    # Build test, val and train split (sequentially) to verify the preprocessing pipeline
+    build_split("train")
