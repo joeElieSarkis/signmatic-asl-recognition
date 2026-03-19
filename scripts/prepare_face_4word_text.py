@@ -2,8 +2,8 @@ from pathlib import Path
 import json
 from collections import Counter
 
-# Folder containing the 4-word subset labels
-BASE_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words\data")
+# Folder containing the 4-word balanced subset labels
+BASE_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced\data")
 
 
 def load_labels(path):
@@ -18,9 +18,9 @@ def tokenize(sentence):
 
 
 # Load labels
-train_labels = load_labels(BASE_PATH / "y_train_face_4w.txt")
-val_labels = load_labels(BASE_PATH / "y_val_face_4w.txt")
-test_labels = load_labels(BASE_PATH / "y_test_face_4w.txt")
+train_labels = load_labels(BASE_PATH / "y_train_face_4w_balanced.txt")
+val_labels = load_labels(BASE_PATH / "y_val_face_4w_balanced.txt")
+test_labels = load_labels(BASE_PATH / "y_test_face_4w_balanced.txt")
 
 # Build vocabulary from TRAIN only
 counter = Counter()
@@ -41,7 +41,7 @@ for word, _ in counter.items():
         vocab[word] = len(vocab)
 
 # Save vocab
-with open(BASE_PATH / "vocab_face_4w.json", "w", encoding="utf-8") as f:
+with open(BASE_PATH / "vocab_face_4w_balanced.json", "w", encoding="utf-8") as f:
     json.dump(vocab, f, indent=2)
 
 print("Vocabulary size:", len(vocab))

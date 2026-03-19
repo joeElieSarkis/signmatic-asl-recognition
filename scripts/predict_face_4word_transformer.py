@@ -7,8 +7,8 @@ from torch import nn
 # =========================
 # Paths
 # =========================
-BASE_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words\data")
-MODEL_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words\models\best_face_4w_transformer.pt")
+BASE_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced\data")
+MODEL_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced\models\best_face_4w_balanced_transformer.pt")
 
 # =========================
 # Settings
@@ -100,16 +100,16 @@ def ids_to_sentence(token_ids, idx_to_word):
 
 
 # Load vocab
-with open(BASE_PATH / "vocab_face_4w.json", "r", encoding="utf-8") as f:
+with open(BASE_PATH / "vocab_face_4w_balanced.json", "r", encoding="utf-8") as f:
     vocab = json.load(f)
 
 idx_to_word = {idx: word for word, idx in vocab.items()}
 vocab_size = len(vocab)
 
 # Load test data
-X_test = np.load(BASE_PATH / "X_test_face_4w.npy")
-y_test = load_labels(BASE_PATH / "y_test_face_4w.txt")
-clip_names = load_labels(BASE_PATH / "clip_names_test_face_4w.txt")
+X_test = np.load(BASE_PATH / "X_test_face_4w_balanced.npy")
+y_test = load_labels(BASE_PATH / "y_test_face_4w_balanced.txt")
+clip_names = load_labels(BASE_PATH / "clip_names_test_face_4w_balanced.txt")
 
 print("Loaded test samples:", len(X_test))
 
