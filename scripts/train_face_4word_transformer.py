@@ -8,8 +8,8 @@ from torch.utils.data import Dataset, DataLoader
 # =========================
 # Paths
 # =========================
-BASE_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced\data")
-MODEL_OUTPUT = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced\models")
+BASE_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced_normalized\data")
+MODEL_OUTPUT = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced_normalized\models")
 MODEL_OUTPUT.mkdir(parents=True, exist_ok=True)
 
 # =========================
@@ -130,21 +130,21 @@ class TransformerSignModel(nn.Module):
 
 
 # Load vocab
-with open(BASE_PATH / "vocab_face_4w_balanced.json", "r", encoding="utf-8") as f:
+with open(BASE_PATH / "vocab_face_4w_balanced_norm.json", "r", encoding="utf-8") as f:
     vocab = json.load(f)
 
 vocab_size = len(vocab)
 
 # Datasets
 train_dataset = SignDataset(
-    BASE_PATH / "X_train_face_4w_balanced.npy",
-    BASE_PATH / "y_train_face_4w_balanced.txt",
+    BASE_PATH / "X_train_face_4w_balanced_norm.npy",
+    BASE_PATH / "y_train_face_4w_balanced_norm.txt",
     vocab
 )
 
 val_dataset = SignDataset(
-    BASE_PATH / "X_val_face_4w_balanced.npy",
-    BASE_PATH / "y_val_face_4w_balanced.txt",
+    BASE_PATH / "X_val_face_4w_balanced_norm.npy",
+    BASE_PATH / "y_val_face_4w_balanced_norm.txt",
     vocab
 )
 
@@ -223,7 +223,7 @@ for epoch in range(EPOCHS):
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         epochs_without_improvement = 0
-        torch.save(model.state_dict(), MODEL_OUTPUT / "best_face_4w_balanced_transformer.pt")
+        torch.save(model.state_dict(), MODEL_OUTPUT / "best_face_4w_balanced_norm_transformer.pt")
         print("Saved new best model.")
     else:
         epochs_without_improvement += 1
