@@ -6,11 +6,10 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 
 # =========================
-# PATHS 
+# PATHS
 # =========================
 BASE_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced_normalized\data")
-
-MODEL_PATH = BASE_PATH.parent / "models" / "best_face_4w_ctc.pt"
+MODEL_PATH = BASE_PATH.parent / "models" / "best_face_4w_ctc_char.pt"
 MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 # =========================
@@ -31,13 +30,32 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 # =========================
-# DATA
+# LOAD LABELS (CHAR LEVEL)
 # =========================
 def load_labels(path):
     with open(path, "r", encoding="utf-8") as f:
-        return [line.strip().split() for line in f]
+        return [list(line.strip()) for line in f]   # 🔥 CHAR LEVEL
 
 
+# =========================
+# BUILD CHAR VOCAB
+# =========================
+def build_vocab(labels):
+    chars = set()
+    for seq in labels:
+        chars.update(seq)
+
+    vocab = {c: i for i, c in enumerate(sorted(chars))}
+
+    vocab["<blank>"] = len(vocab)
+    vocab["<unk>"] = len(vocab)
+
+    return vocab
+
+
+# =========================
+# DATASET
+# =========================
 class CTCDataset(Dataset):
     def __init__(self, x_path, y_path, vocab):
         self.X = np.load(x_path)
@@ -50,7 +68,7 @@ class CTCDataset(Dataset):
     def __getitem__(self, idx):
         x = torch.tensor(self.X[idx], dtype=torch.float32)
 
-        y_ids = [self.vocab.get(w, self.vocab["<unk>"]) for w in self.y[idx]]
+        y_ids = [self.vocab.get(c, self.vocab["<unk>"]) for c in self.y[idx]]
         y_ids = torch.tensor(y_ids, dtype=torch.long)
 
         return x, y_ids, 30, len(y_ids)
@@ -102,12 +120,9 @@ class CTCTransformer(nn.Module):
         )
 
         self.temporal_conv = nn.Conv1d(
-            in_channels=D_MODEL,
-            out_channels=D_MODEL,
-            kernel_size=3,
-            stride=2,
-            padding=1
+            D_MODEL, D_MODEL, kernel_size=3, stride=2, padding=1
         )
+
         self.pos = PositionalEncoding(D_MODEL, 30)
 
         encoder_layer = nn.TransformerEncoderLayer(
@@ -119,15 +134,14 @@ class CTCTransformer(nn.Module):
         )
 
         self.encoder = nn.TransformerEncoder(encoder_layer, NUM_LAYERS)
-
         self.fc = nn.Linear(D_MODEL, vocab_size)
 
     def forward(self, x):
-        x = self.input_proj(x)          # (B, 60, D)
+        x = self.input_proj(x)
 
-        x = x.transpose(1, 2)           # (B, D, 60)
-        x = self.temporal_conv(x)       # (B, D, 30)
-        x = x.transpose(1, 2)           # (B, 30, D)
+        x = x.transpose(1, 2)
+        x = self.temporal_conv(x)
+        x = x.transpose(1, 2)
 
         x = self.pos(x)
         x = self.encoder(x)
@@ -135,22 +149,11 @@ class CTCTransformer(nn.Module):
 
 
 # =========================
-# LOAD VOCAB
+# LOAD DATA
 # =========================
-with open(BASE_PATH / "vocab_face_4w_balanced_norm.json", "r", encoding="utf-8") as f:
-    vocab = json.load(f)
+train_labels = load_labels(BASE_PATH / "y_train_face_4w_balanced_norm.txt")
+vocab = build_vocab(train_labels)
 
-# ADD BLANK TOKEN (CTC REQUIRED)
-if "<blank>" not in vocab:
-    vocab["<blank>"] = len(vocab)
-
-vocab_size = len(vocab)
-blank_id = vocab["<blank>"]
-
-
-# =========================
-# DATA LOADERS
-# =========================
 train_ds = CTCDataset(
     BASE_PATH / "X_train_face_4w_balanced_norm.npy",
     BASE_PATH / "y_train_face_4w_balanced_norm.txt",
@@ -170,9 +173,9 @@ val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, collate_fn
 # =========================
 # TRAIN
 # =========================
-model = CTCTransformer(INPUT_DIM, vocab_size).to(DEVICE)
+model = CTCTransformer(INPUT_DIM, len(vocab)).to(DEVICE)
 
-criterion = nn.CTCLoss(blank=blank_id, zero_infinity=True)
+criterion = nn.CTCLoss(blank=vocab["<blank>"], zero_infinity=True)
 optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
 
 best_val = float("inf")

@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 BASE_PATH = Path(r"C:\Users\Joe\OneDrive\Desktop\signmatic_thesis\experiments\face_4words_balanced_normalized\data")
-MODEL_PATH = BASE_PATH.parent / "models" / "best_face_4w_ctc.pt"
+MODEL_PATH = BASE_PATH.parent / "models" / "best_face_4w_ctc_char.pt"
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -17,9 +17,6 @@ FF_DIM = 512
 DROPOUT = 0.1
 
 
-# =========================
-# MODEL
-# =========================
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=500):
         super().__init__()
@@ -43,6 +40,7 @@ class PositionalEncoding(nn.Module):
 class CTCTransformer(nn.Module):
     def __init__(self, input_dim, vocab_size):
         super().__init__()
+
         self.input_proj = nn.Sequential(
             nn.Linear(input_dim, D_MODEL),
             nn.ReLU(),
@@ -50,12 +48,9 @@ class CTCTransformer(nn.Module):
         )
 
         self.temporal_conv = nn.Conv1d(
-            in_channels=D_MODEL,
-            out_channels=D_MODEL,
-            kernel_size=3,
-            stride=2,
-            padding=1
+            D_MODEL, D_MODEL, kernel_size=3, stride=2, padding=1
         )
+
         self.pos = PositionalEncoding(D_MODEL, 30)
 
         encoder_layer = nn.TransformerEncoderLayer(
@@ -70,11 +65,11 @@ class CTCTransformer(nn.Module):
         self.fc = nn.Linear(D_MODEL, vocab_size)
 
     def forward(self, x):
-        x = self.input_proj(x)          # (B, 60, D)
+        x = self.input_proj(x)
 
-        x = x.transpose(1, 2)           # (B, D, 60)
-        x = self.temporal_conv(x)       # (B, D, 30)
-        x = x.transpose(1, 2)           # (B, 30, D)
+        x = x.transpose(1, 2)
+        x = self.temporal_conv(x)
+        x = x.transpose(1, 2)
 
         x = self.pos(x)
         x = self.encoder(x)
@@ -82,15 +77,24 @@ class CTCTransformer(nn.Module):
 
 
 # =========================
-# LOAD VOCAB
+# LOAD TRAIN LABELS → BUILD VOCAB
 # =========================
-with open(BASE_PATH / "vocab_face_4w_balanced_norm.json", "r", encoding="utf-8") as f:
-    vocab = json.load(f)
+def load_labels(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return [list(line.strip()) for line in f]
 
-if "<blank>" not in vocab:
-    vocab["<blank>"] = len(vocab)
 
-idx_to_word = {i: w for w, i in vocab.items()}
+train_labels = load_labels(BASE_PATH / "y_train_face_4w_balanced_norm.txt")
+
+chars = set()
+for seq in train_labels:
+    chars.update(seq)
+
+vocab = {c: i for i, c in enumerate(sorted(chars))}
+vocab["<blank>"] = len(vocab)
+vocab["<unk>"] = len(vocab)
+
+idx_to_char = {i: c for c, i in vocab.items()}
 blank_id = vocab["<blank>"]
 
 # =========================
@@ -99,6 +103,7 @@ blank_id = vocab["<blank>"]
 model = CTCTransformer(INPUT_DIM, len(vocab)).to(DEVICE)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
 model.eval()
+
 
 # =========================
 # DECODE
@@ -114,8 +119,8 @@ def decode(logits):
             result.append(p)
         prev = p
 
-    words = [idx_to_word[i] for i in result if i in idx_to_word]
-    return " ".join(words)
+    chars = [idx_to_char[i] for i in result if i in idx_to_char]
+    return "".join(chars)
 
 
 # =========================
