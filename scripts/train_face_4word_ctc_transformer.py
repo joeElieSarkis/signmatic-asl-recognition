@@ -25,7 +25,7 @@ DROPOUT = 0.1
 
 BATCH_SIZE = 32
 EPOCHS = 40
-LR = 1e-4
+LR = 5e-5
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -53,7 +53,7 @@ class CTCDataset(Dataset):
         y_ids = [self.vocab.get(w, self.vocab["<unk>"]) for w in self.y[idx]]
         y_ids = torch.tensor(y_ids, dtype=torch.long)
 
-        return x, y_ids, len(x), len(y_ids)
+        return x, y_ids, 30, len(y_ids)
 
 
 def collate_fn(batch):
@@ -62,8 +62,8 @@ def collate_fn(batch):
     xs = torch.stack(xs)
     ys = torch.cat(ys)
 
-    input_lens = torch.tensor(input_lens)
-    target_lens = torch.tensor(target_lens)
+    input_lens = torch.tensor(input_lens, dtype=torch.long)
+    target_lens = torch.tensor(target_lens, dtype=torch.long)
 
     return xs, ys, input_lens, target_lens
 
@@ -95,8 +95,20 @@ class CTCTransformer(nn.Module):
     def __init__(self, input_dim, vocab_size):
         super().__init__()
 
-        self.input_proj = nn.Linear(input_dim, D_MODEL)
-        self.pos = PositionalEncoding(D_MODEL, 60)
+        self.input_proj = nn.Sequential(
+            nn.Linear(input_dim, D_MODEL),
+            nn.ReLU(),
+            nn.Linear(D_MODEL, D_MODEL)
+        )
+
+        self.temporal_conv = nn.Conv1d(
+            in_channels=D_MODEL,
+            out_channels=D_MODEL,
+            kernel_size=3,
+            stride=2,
+            padding=1
+        )
+        self.pos = PositionalEncoding(D_MODEL, 30)
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=D_MODEL,
@@ -111,7 +123,12 @@ class CTCTransformer(nn.Module):
         self.fc = nn.Linear(D_MODEL, vocab_size)
 
     def forward(self, x):
-        x = self.input_proj(x)
+        x = self.input_proj(x)          # (B, 60, D)
+
+        x = x.transpose(1, 2)           # (B, D, 60)
+        x = self.temporal_conv(x)       # (B, D, 30)
+        x = x.transpose(1, 2)           # (B, 30, D)
+
         x = self.pos(x)
         x = self.encoder(x)
         return self.fc(x)
